@@ -1,4 +1,4 @@
-=Standalone Deferred
+# Standalone Deferred
 
 https://github.com/Mumakil/Standalone-Deferred
 
@@ -6,18 +6,18 @@ This is a standalone implementation of the [jQuery.Deferred](http://api.jquery.c
 
 This project is trying to mimic $.Deferred as much as possible, but I wouldn't be surprised if there are differences. One major shortfall is that this one is missing all the `progress()` related stuff and `pipe()`.
 
-==Compatibility
+## Compatibility
 
 Requires Array.prototype.forEach.
 
-==Tests
+## Tests
 
 The project should have pretty complete test coverage written with [Jasmine](http://pivotal.github.com/jasmine/) but if you see any shortcomings, feel free to notify me.
 
-==License
+## License
 
 MIT License
 
-==Author
+## Author
 
 Otto Vehviläinen
