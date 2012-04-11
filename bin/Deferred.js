@@ -6,7 +6,9 @@ Released under MIT license
 
 This is a standalone implementation of the wonderful jQuery.Deferred API. 
 The documentation here is only for quick reference, for complete api please
-check http://api.jquery.com/category/deferred-object/
+see the great work of the original project:
+
+ http://api.jquery.com/category/deferred-object/
 */
 
 (function() {
