@@ -21,3 +21,4 @@ MIT License
 ## Author
 
 Otto Vehviläinen
+[@Mumakil](http://twitter.com/Mumakil)
