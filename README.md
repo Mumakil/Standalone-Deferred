@@ -4,7 +4,7 @@ https://github.com/Mumakil/Standalone-Deferred
 
 This is a standalone implementation of the [jQuery.Deferred](http://api.jquery.com/category/deferred-object/) interface. I wanted to use the wonderful Deferred interface in projects where I don't want to include the whole big jQuery library but use for example zepto. 
 
-This project is trying to mimic $.Deferred as much as possible, but I wouldn't be surprised if there are differences. One major shortfall is that this one is missing all the `progress()` related stuff and `pipe()`.
+This project is trying to mimic $.Deferred as much as possible, but I wouldn't be surprised if there are differences. One major shortfall still is that this one is missing all the `progress()` related functionality.
 
 ## Compatibility
 

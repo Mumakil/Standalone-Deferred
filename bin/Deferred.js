@@ -3,6 +3,10 @@
 Standalone Deferred
 Copyright 2012 Otto Vehviläinen 
 Released under MIT license
+
+This is a standalone implementation of the wonderful jQuery.Deferred API. 
+The documentation here is only for quick reference, for complete api please
+check http://api.jquery.com/category/deferred-object/
 */
 
 (function() {
@@ -11,9 +15,18 @@ Released under MIT license
 
   if (!Array.prototype.forEach) throw "Deferred requires Array.forEach";
 
+  /*
+  Tells if an object is observable
+  */
+
   isObservable = function(obj) {
     return typeof result === 'object' && (result.constructor.name === 'Deferred' || result.constructor.name === 'Promise');
   };
+
+  /*
+  Flatten a two dimensional array into one dimension.
+  Removes elements that are not functions
+  */
 
   flatten = function(args) {
     var flatted;
@@ -25,13 +38,18 @@ Released under MIT license
           return flatted.push(item);
         } else {
           return args.forEach(function(fn) {
-            if (fn) return flatted.push(fn);
+            if (typeof fn === 'function') return flatted.push(fn);
           });
         }
       }
     });
     return flatted;
   };
+
+  /*
+  Promise object functions as a proxy for a Deferred, except 
+  it does not let you modify the state of the Deferred
+  */
 
   Promise = (function() {
 
@@ -62,6 +80,10 @@ Released under MIT license
       return this;
     };
 
+    Promise.prototype.pipe = function(doneFilter, failFilter) {
+      return this._deferred.pipe(doneFilter, failFilter);
+    };
+
     Promise.prototype.state = function() {
       return this._deferred.state();
     };
@@ -76,17 +98,31 @@ Released under MIT license
   })();
 
   window.Deferred = (function() {
-
+    /*
+      Initializes a new Deferred. You can pass a function as a parameter 
+      to be executed immediately after init. The function receives 
+      the new deferred object as a parameter and this is also set to the
+      same object.
+    */
     function Deferred(fn) {
       this._state = 'pending';
       if (typeof fn === 'function') fn.call(this, this);
     }
 
+    /*
+      Pass in functions or arrays of functions to be executed when the 
+      Deferred object changes state from pending. If the state is already
+      rejected or resolved, the functions are executed immediately. They
+      receive the arguments that are passed to reject or resolve and this
+      is set to the object defined by rejectWith or resolveWith if those
+      variants are used.
+    */
+
     Deferred.prototype.always = function() {
       var args, functions, _ref,
         _this = this;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      if (args.length === 0) return;
+      if (args.length === 0) return this;
       functions = flatten(args);
       if (this._state !== 'pending') {
         functions.forEach(function(fn) {
@@ -99,11 +135,20 @@ Released under MIT license
       return this;
     };
 
+    /*
+      Pass in functions or arrays of functions to be executed when the 
+      Deferred object is resolved. If the object has already been resolved, 
+      the functions are executed immediately. If the object has been rejected,
+      nothing happens. The functions receive the arguments that are passed 
+      to resolve and this is set to the object defined by resolveWith if that
+      variant is used.
+    */
+
     Deferred.prototype.done = function() {
       var args, functions, _ref,
         _this = this;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      if (args.length === 0) return;
+      if (args.length === 0) return this;
       functions = flatten(args);
       if (this._state === 'resolved') {
         functions.forEach(function(fn) {
@@ -116,11 +161,20 @@ Released under MIT license
       return this;
     };
 
+    /*
+      Pass in functions or arrays of functions to be executed when the 
+      Deferred object is rejected. If the object has already been rejected, 
+      the functions are executed immediately. If the object has been resolved,
+      nothing happens. The functions receive the arguments that are passed 
+      to reject and this is set to the object defined by rejectWith if that
+      variant is used.
+    */
+
     Deferred.prototype.fail = function() {
       var args, functions, _ref,
         _this = this;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      if (args.length === 0) return;
+      if (args.length === 0) return this;
       functions = flatten(args);
       if (this._state === 'rejected') {
         functions.forEach(function(fn) {
@@ -132,6 +186,16 @@ Released under MIT license
       }
       return this;
     };
+
+    /*
+      Returns a new Promise object that's tied to the current Deferred. The doneFilter
+      and failFilter can be used to modify the final values that are passed to the 
+      callbacks of the new promise. If the parameters passed are falsy, the promise
+      object resolves or rejects normally. If the filter functions return a value,
+      that one is passed to the respective callbacks. The filters can also return a
+      new Promise or Deferred object, which rejected / resolved will control how the
+      callbacks fire.
+    */
 
     Deferred.prototype.pipe = function(doneFilter, failFilter) {
       var def;
@@ -183,10 +247,30 @@ Released under MIT license
       return def.promise();
     };
 
+    /*
+      progress: (args...) ->
+        return @ if args.length == 0 || @_state != 'pending'
+        functions = flatten(args)
+        if @_state == 'pending'
+          @_failCallbacks ||= []
+          @_failCallbacks.push(functions...)
+        @
+    */
+
+    /*
+      Returns the promise object of this Deferred
+    */
+
     Deferred.prototype.promise = function() {
       if (!this._promise) this._promise = new Promise(this);
       return this._promise;
     };
+
+    /*
+      Reject this Deferred. If the object has already been rejected or resolved,
+      nothing happens. Parameters passed to reject will be handed to all current
+      and future fail and always callbacks.
+    */
 
     Deferred.prototype.reject = function() {
       var args;
@@ -195,11 +279,16 @@ Released under MIT license
       return this;
     };
 
+    /*
+      Reject this Deferred with additional context. Works the same way as reject, except
+      the first parameter is used as this when calling the fail and always callbacks.
+    */
+
     Deferred.prototype.rejectWith = function() {
       var args, context, _ref, _ref2,
         _this = this;
       context = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
-      if (this._state !== 'pending') return;
+      if (this._state !== 'pending') return this;
       this._state = 'rejected';
       this._withArguments = args;
       this._context = context;
@@ -216,6 +305,12 @@ Released under MIT license
       return this;
     };
 
+    /*
+      Resolves this Deferred object. If the object has already been rejected or resolved,
+      nothing happens. Parameters passed to resolve will be handed to all current and
+      future done and always callbacks.
+    */
+
     Deferred.prototype.resolve = function() {
       var args;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
@@ -223,11 +318,16 @@ Released under MIT license
       return this;
     };
 
+    /*
+      Resolve this Deferred with additional context. Works the same way as resolve, except
+      the first parameter is used as this when calling the done and always callbacks.
+    */
+
     Deferred.prototype.resolveWith = function() {
       var args, context, _ref, _ref2,
         _this = this;
       context = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
-      if (this._state !== 'pending') return;
+      if (this._state !== 'pending') return this;
       this._state = 'resolved';
       this._context = context;
       this._withArguments = args;
@@ -244,9 +344,17 @@ Released under MIT license
       return this;
     };
 
+    /*
+      Returns the state of this Deferred. Can be 'pending', 'rejected' or 'resolved'.
+    */
+
     Deferred.prototype.state = function() {
       return this._state;
     };
+
+    /*
+      Convenience function to specify both done and fail callbacks at the same time.
+    */
 
     Deferred.prototype.then = function(doneCallbacks, failCallbacks) {
       this.done(doneCallbacks);
@@ -257,6 +365,13 @@ Released under MIT license
     return Deferred;
 
   })();
+
+  /*
+  Returns a new promise object which will resolve when all of the deferreds or promises
+  passed to the function resolve. The callbacks receive all the parameters that the 
+  individual resolves yielded as an array. If any of the deferreds or promises are 
+  rejected, the promise will be rejected immediately.
+  */
 
   window.Deferred.when = function() {
     var allDoneArgs, allReady, args, readyCount;
