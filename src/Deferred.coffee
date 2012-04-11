@@ -144,6 +144,25 @@ class window.Deferred
     @
   
   ###
+  Notify progress callbacks. The callbacks get passed the arguments given to notify.
+  If the object has resolved or rejected, nothing will happen
+  ###
+  notify: (args...) ->
+    @notifyWith(window, args...)
+    @
+  
+  ###
+  Notify progress callbacks with additional context. Works the same way as notify(),
+  except this is set to context when calling the functions.
+  ###
+  notifyWith: (context, args...) ->
+    return @ if @_state != 'pending'
+    @_progressCallbacks?.forEach((fn) ->
+      fn.apply(context, args)
+    )
+    @  
+  
+  ###
   Returns a new Promise object that's tied to the current Deferred. The doneFilter
   and failFilter can be used to modify the final values that are passed to the 
   callbacks of the new promise. If the parameters passed are falsy, the promise
@@ -185,17 +204,17 @@ class window.Deferred
     def.promise()
 
   ###
+  Add progress callbacks to be fired when using notify()
+  ###
   progress: (args...) ->
     return @ if args.length == 0 || @_state != 'pending'
     functions = flatten(args)
-    if @_state == 'pending'
-      @_failCallbacks ||= []
-      @_failCallbacks.push(functions...)
+    @_progressCallbacks ||= []
+    @_progressCallbacks.push(functions...)
     @
-  ###
   
   ###
-  Returns the promise object of this Deferred
+  Returns the promise object of this Deferred.
   ###
   promise: ->
     unless @_promise
@@ -261,11 +280,12 @@ class window.Deferred
     @_state
   
   ###
-  Convenience function to specify both done and fail callbacks at the same time.
+  Convenience function to specify each done, fail and progress callbacks at the same time.
   ###
-  then: (doneCallbacks, failCallbacks) -> 
+  then: (doneCallbacks, failCallbacks, progressCallbacks) -> 
     @done(doneCallbacks)
     @fail(failCallbacks)
+    @progress(progressCallbacks)
     @
 
 ###

@@ -364,4 +364,27 @@
     });
   });
 
+  describe('Progress and notify', function() {
+    return it('Should notify with correct context', function() {
+      var context, def, param1, param2, progressCalled;
+      def = new Deferred();
+      context = new Array();
+      param1 = 'foo';
+      param2 = 'bar';
+      progressCalled = 0;
+      def.progress(function(value1, value2) {
+        progressCalled += 1;
+        expect(value1).toEqual(param1);
+        expect(value2).toEqual(param2);
+        return expect(this).toEqual(context);
+      });
+      def.notifyWith(context, param1, param2);
+      def.notifyWith(context, param1, param2);
+      expect(progressCalled).toEqual(2);
+      def.resolve();
+      def.notify();
+      return expect(progressCalled).toEqual(2);
+    });
+  });
+
 }).call(this);
