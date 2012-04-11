@@ -1,8 +1,37 @@
+
+/* 
+Standalone Deferred
+Copyright 2012 Otto Vehviläinen 
+Released under MIT license
+*/
+
 (function() {
-  var Promise,
+  var Promise, flatten, isObservable,
     __slice = Array.prototype.slice;
 
   if (!Array.prototype.forEach) throw "Deferred requires Array.forEach";
+
+  isObservable = function(obj) {
+    return typeof result === 'object' && (result.constructor.name === 'Deferred' || result.constructor.name === 'Promise');
+  };
+
+  flatten = function(args) {
+    var flatted;
+    if (!args) return [];
+    flatted = [];
+    args.forEach(function(item) {
+      if (item) {
+        if (typeof item === 'function') {
+          return flatted.push(item);
+        } else {
+          return args.forEach(function(fn) {
+            if (fn) return flatted.push(fn);
+          });
+        }
+      }
+    });
+    return flatted;
+  };
 
   Promise = (function() {
 
@@ -12,18 +41,24 @@
       this._deferred = deferred;
     }
 
-    Promise.prototype.always = function(fn) {
-      this._deferred.always(fn);
+    Promise.prototype.always = function() {
+      var args, _ref;
+      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      (_ref = this._deferred).always.apply(_ref, args);
       return this;
     };
 
-    Promise.prototype.done = function(fn) {
-      this._deferred.done(fn);
+    Promise.prototype.done = function() {
+      var args, _ref;
+      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      (_ref = this._deferred).done.apply(_ref, args);
       return this;
     };
 
-    Promise.prototype.fail = function(fn) {
-      this._deferred.fail(fn);
+    Promise.prototype.fail = function() {
+      var args, _ref;
+      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      (_ref = this._deferred).fail.apply(_ref, args);
       return this;
     };
 
@@ -47,37 +82,105 @@
       if (typeof fn === 'function') fn.call(this, this);
     }
 
-    Deferred.prototype.always = function(fn) {
-      if (typeof fn !== 'function') return;
+    Deferred.prototype.always = function() {
+      var args, functions, _ref,
+        _this = this;
+      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      if (args.length === 0) return;
+      functions = flatten(args);
       if (this._state !== 'pending') {
-        fn.apply(this._context, this._withArguments);
+        functions.forEach(function(fn) {
+          return fn.apply(_this._context, _this._withArguments);
+        });
       } else {
         this._alwaysCallbacks || (this._alwaysCallbacks = []);
-        this._alwaysCallbacks.push(fn);
+        (_ref = this._alwaysCallbacks).push.apply(_ref, functions);
       }
       return this;
     };
 
-    Deferred.prototype.done = function(fn) {
-      if (typeof fn !== 'function') return;
+    Deferred.prototype.done = function() {
+      var args, functions, _ref,
+        _this = this;
+      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      if (args.length === 0) return;
+      functions = flatten(args);
       if (this._state === 'resolved') {
-        fn.apply(this._context, this._withArguments);
+        functions.forEach(function(fn) {
+          return fn.apply(_this._context, _this._withArguments);
+        });
       } else if (this._state === 'pending') {
         this._doneCallbacks || (this._doneCallbacks = []);
-        this._doneCallbacks.push(fn);
+        (_ref = this._doneCallbacks).push.apply(_ref, functions);
       }
       return this;
     };
 
-    Deferred.prototype.fail = function(fn) {
-      if (typeof fn !== 'function') return;
+    Deferred.prototype.fail = function() {
+      var args, functions, _ref,
+        _this = this;
+      args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      if (args.length === 0) return;
+      functions = flatten(args);
       if (this._state === 'rejected') {
-        fn.apply(this._context, this._withArguments);
+        functions.forEach(function(fn) {
+          return fn.apply(_this._context, _this._withArguments);
+        });
       } else if (this._state === 'pending') {
         this._failCallbacks || (this._failCallbacks = []);
-        this._failCallbacks.push(fn);
+        (_ref = this._failCallbacks).push.apply(_ref, functions);
       }
       return this;
+    };
+
+    Deferred.prototype.pipe = function(doneFilter, failFilter) {
+      var def;
+      def = new Deferred();
+      this.done(function() {
+        var args, result, _ref;
+        args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+        if (typeof doneFilter === 'undefined' || doneFilter === null) {
+          return (_ref = def.resolveWith).call.apply(_ref, [def, this].concat(__slice.call(args)));
+        } else {
+          result = doneFilter.apply(this, args);
+          if (isObservable(result)) {
+            return result.done(function() {
+              var doneArgs, _ref2;
+              doneArgs = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+              return (_ref2 = def.resolveWith).call.apply(_ref2, [def, this].concat(__slice.call(doneArgs)));
+            }).fail(function() {
+              var failArgs, _ref2;
+              failArgs = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+              return (_ref2 = def.rejectWith).call.apply(_ref2, [def, this].concat(__slice.call(failArgs)));
+            });
+          } else {
+            return def.resolveWith.call(def, this, result);
+          }
+        }
+      });
+      this.fail(function() {
+        var args, result, _ref;
+        args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+        if (typeof failFilter === 'undefined' || failFilter === null) {
+          return (_ref = def.rejectWith).call.apply(_ref, [def, this].concat(__slice.call(args)));
+        } else {
+          result = failFilter.apply(this, args);
+          if (isObservable(result)) {
+            return result.done(function() {
+              var doneArgs, _ref2;
+              doneArgs = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+              return (_ref2 = def.resolveWith).call.apply(_ref2, [def, this].concat(__slice.call(doneArgs)));
+            }).fail(function() {
+              var failArgs, _ref2;
+              failArgs = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+              return (_ref2 = def.rejectWith).call.apply(_ref2, [def, this].concat(__slice.call(failArgs)));
+            });
+          } else {
+            return def.rejectWith.call(def, this, result);
+          }
+        }
+      });
+      return def.promise();
     };
 
     Deferred.prototype.promise = function() {
@@ -145,10 +248,9 @@
       return this._state;
     };
 
-    Deferred.prototype.then = function(doneFn, failFn, context) {
-      if (context == null) context = window;
-      this.done(doneFn, context);
-      this.fail(failFn, context);
+    Deferred.prototype.then = function(doneCallbacks, failCallbacks) {
+      this.done(doneCallbacks);
+      this.fail(failCallbacks);
       return this;
     };
 

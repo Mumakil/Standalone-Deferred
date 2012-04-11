@@ -1,5 +1,29 @@
+### 
+Standalone Deferred
+Copyright 2012 Otto Vehviläinen 
+Released under MIT license
+###
+
 if !Array.prototype.forEach
   throw "Deferred requires Array.forEach"
+
+isObservable = (obj) ->
+  typeof result == 'object' && (result.constructor.name == 'Deferred' || result.constructor.name == 'Promise')
+
+flatten = (args) ->
+  return [] if !args
+  flatted = []
+  args.forEach((item) -> 
+    if item
+      if typeof item == 'function'
+        flatted.push(item)
+      else
+        args.forEach((fn) -> 
+          if fn
+            flatted.push(fn)
+        )
+  )
+  flatted
 
 class Promise
   _deferred: null
@@ -7,16 +31,16 @@ class Promise
   constructor: (deferred) ->
     @_deferred = deferred
 
-  always: (fn) ->
-    @_deferred.always(fn)
+  always: (args...) ->
+    @_deferred.always(args...)
     @
 
-  done: (fn) ->
-    @_deferred.done(fn)
+  done: (args...) ->
+    @_deferred.done(args...)
     @
 
-  fail: (fn) ->
-    @_deferred.fail(fn)
+  fail: (args...) ->
+    @_deferred.fail(args...)
     @
 
   state: ->
@@ -31,36 +55,74 @@ class window.Deferred
   constructor: (fn) ->
     @_state = 'pending'
     fn.call(@, @) if typeof fn == 'function'
-    
   
-  always: (fn) ->
-    return if typeof fn != 'function'
+  always: (args...) ->
+    return if args.length == 0
+    functions = flatten(args)
     if @_state != 'pending'
-      fn.apply(@_context, @_withArguments)
+      functions.forEach((fn) =>
+        fn.apply(@_context, @_withArguments)
+      )
     else 
       @_alwaysCallbacks ||= []
-      @_alwaysCallbacks.push(fn)
+      @_alwaysCallbacks.push(functions...)
     @
     
-  done: (fn) ->
-    return if typeof fn != 'function'
+  done: (args...) ->
+    return if args.length == 0
+    functions = flatten(args)
     if @_state == 'resolved'
-      fn.apply(@_context, @_withArguments)
+      functions.forEach((fn) =>
+        fn.apply(@_context, @_withArguments)
+      )
     else if @_state == 'pending'
       @_doneCallbacks ||= []
-      @_doneCallbacks.push(fn)
+      @_doneCallbacks.push(functions...)
     @
     
-  fail: (fn) ->
-    return if typeof fn != 'function'
+  fail: (args...) ->
+    return if args.length == 0
+    functions = flatten(args)
     if @_state == 'rejected'
-      fn.apply(@_context, @_withArguments)
+      functions.forEach((fn) =>
+        fn.apply(@_context, @_withArguments)
+      )
     else if @_state == 'pending'
       @_failCallbacks ||= []
-      @_failCallbacks.push(fn)
+      @_failCallbacks.push(functions...)
     @
   
-  #pipe: (doneFilter, failFilter) ->
+  pipe: (doneFilter, failFilter) ->
+    def = new Deferred()
+    @done((args...) ->
+      if typeof doneFilter == 'undefined' || doneFilter == null
+        def.resolveWith.call(def, @, args...)
+      else
+        result = doneFilter.apply(@, args)
+        if isObservable(result)
+          result.done((doneArgs...)->
+            def.resolveWith.call(def, @, doneArgs...)
+          ).fail((failArgs...) ->
+            def.rejectWith.call(def, @, failArgs...)
+          )
+        else
+          def.resolveWith.call(def, @, result)
+    )
+    @fail((args...) ->
+      if typeof failFilter == 'undefined' || failFilter == null
+        def.rejectWith.call(def, @, args...) 
+      else
+        result = failFilter.apply(@, args)
+        if isObservable(result)
+          result.done((doneArgs...)->
+            def.resolveWith.call(def, @, doneArgs...)
+          ).fail((failArgs...) ->
+            def.rejectWith.call(def, @, failArgs...)
+          )
+        else
+          def.rejectWith.call(def, @, result)
+    )
+    def.promise()
   
   promise: ->
     unless @_promise
@@ -104,9 +166,9 @@ class window.Deferred
   state: ->
     @_state
   
-  then: (doneFn, failFn, context = window) -> 
-    @done(doneFn, context)
-    @fail(failFn, context)
+  then: (doneCallbacks, failCallbacks) -> 
+    @done(doneCallbacks)
+    @fail(failCallbacks)
     @
 
 window.Deferred.when = (args...) ->

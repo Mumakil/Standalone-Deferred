@@ -228,3 +228,120 @@ describe "Deferred.when", ->
     expect(failFired).toEqual(1)
   )
   
+describe 'Deferred.pipe()', ->
+  it("Should fire normally without parameters", ->
+    doneFired = 0
+    failFired = 0
+    param = 'foo'
+    context = new Array()
+    deferred = new Deferred()
+    deferred.pipe().done((value)->
+      expect(value).toEqual(param)
+      expect(@).toEqual(context)
+      doneFired += 1
+    ).fail((value)->
+      failFired += 1
+    )
+    deferred.resolveWith(context, param)
+    expect(doneFired).toEqual(1)
+    expect(failFired).toEqual(0)
+    
+    deferred = new Deferred()
+    deferred.pipe().done((value)->
+      doneFired += 1
+    ).fail((value) ->
+      expect(value).toEqual(param)
+      expect(@).toEqual(context)
+      failFired += 1
+    )
+    deferred.rejectWith(context, param)
+    expect(doneFired).toEqual(1)
+    expect(failFired).toEqual(1)
+  )
+  
+  it("Should filter with function", ->
+    doneFired = 0
+    failFired = 0
+    param1 = 'foo'
+    param2 = 'bar'
+    context = new Array()
+    deferred = new Deferred()
+    deferred.pipe(
+      (string1, string2)->
+        expect(string1).toEqual(param1)
+        expect(string2).toEqual(param2)
+        string1 + string2
+    ).done((value)->
+      expect(value).toEqual(param1 + param2)
+      expect(@).toEqual(context)
+      doneFired += 1
+    ).fail((value)->
+      failFired += 1
+    )
+    deferred.resolveWith(context, param1, param2)
+    expect(doneFired).toEqual(1)
+    expect(failFired).toEqual(0)
+
+    deferred = new Deferred()
+    deferred.pipe(
+      null,
+      (string1, string2) ->
+        expect(string1).toEqual(param1)
+        expect(string2).toEqual(param2)
+        string1 + string2
+    ).done((value)->
+      doneFired += 1
+    ).fail((value) ->
+      expect(value).toEqual(param1 + param2)
+      expect(@).toEqual(context)
+      failFired += 1
+    )
+    deferred.rejectWith(context, param1, param2)
+    expect(doneFired).toEqual(1)
+    expect(failFired).toEqual(1)
+  )
+  it('Should filter with another observable', ->
+    doneFired = 0
+    failFired = 0
+    param1 = 'foo'
+    param2 = 'bar'
+    context = new Array()
+    deferred = new Deferred()
+    pipeDeferred = new Deferred()
+    deferred.pipe(
+      (string1, string2)->
+        expect(string1).toEqual(param1)
+        expect(string2).toEqual(param2)
+        pipeDeferred.reject(string1, string2).promise()
+    ).fail((passed1, passed2)->
+      expect(passed1).toEqual(param1)
+      expect(passed2).toEqual(param2)
+      expect(@).toEqual(context)
+      failFired += 1
+    ).done((value)->
+      doneFired += 1
+    )
+    deferred.resolveWith(context, param1, param2)
+    expect(doneFired).toEqual(1)
+    expect(failFired).toEqual(0)
+
+    deferred = new Deferred()
+    pipeDeferred = new Deferred()
+    deferred.pipe(
+      null,
+      (string1, string2) ->
+        expect(string1).toEqual(param1)
+        expect(string2).toEqual(param2)
+        pipeDeferred.resolveWith(context, param1, param2)
+    ).fail((value)->
+      failFired += 1
+    ).done((passed1, passed2) ->
+      expect(passed1).toEqual(param1)
+      expect(passed2).toEqual(param2)
+      expect(@).toEqual(context)
+      doneFired += 1
+    )
+    deferred.reject(param1, param2)
+    expect(doneFired).toEqual(1)
+    expect(failFired).toEqual(1)
+  )

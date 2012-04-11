@@ -252,4 +252,116 @@
     });
   });
 
+  describe('Deferred.pipe()', function() {
+    it("Should fire normally without parameters", function() {
+      var context, deferred, doneFired, failFired, param;
+      doneFired = 0;
+      failFired = 0;
+      param = 'foo';
+      context = new Array();
+      deferred = new Deferred();
+      deferred.pipe().done(function(value) {
+        expect(value).toEqual(param);
+        expect(this).toEqual(context);
+        return doneFired += 1;
+      }).fail(function(value) {
+        return failFired += 1;
+      });
+      deferred.resolveWith(context, param);
+      expect(doneFired).toEqual(1);
+      expect(failFired).toEqual(0);
+      deferred = new Deferred();
+      deferred.pipe().done(function(value) {
+        return doneFired += 1;
+      }).fail(function(value) {
+        expect(value).toEqual(param);
+        expect(this).toEqual(context);
+        return failFired += 1;
+      });
+      deferred.rejectWith(context, param);
+      expect(doneFired).toEqual(1);
+      return expect(failFired).toEqual(1);
+    });
+    it("Should filter with function", function() {
+      var context, deferred, doneFired, failFired, param1, param2;
+      doneFired = 0;
+      failFired = 0;
+      param1 = 'foo';
+      param2 = 'bar';
+      context = new Array();
+      deferred = new Deferred();
+      deferred.pipe(function(string1, string2) {
+        expect(string1).toEqual(param1);
+        expect(string2).toEqual(param2);
+        return string1 + string2;
+      }).done(function(value) {
+        expect(value).toEqual(param1 + param2);
+        expect(this).toEqual(context);
+        return doneFired += 1;
+      }).fail(function(value) {
+        return failFired += 1;
+      });
+      deferred.resolveWith(context, param1, param2);
+      expect(doneFired).toEqual(1);
+      expect(failFired).toEqual(0);
+      deferred = new Deferred();
+      deferred.pipe(null, function(string1, string2) {
+        expect(string1).toEqual(param1);
+        expect(string2).toEqual(param2);
+        return string1 + string2;
+      }).done(function(value) {
+        return doneFired += 1;
+      }).fail(function(value) {
+        expect(value).toEqual(param1 + param2);
+        expect(this).toEqual(context);
+        return failFired += 1;
+      });
+      deferred.rejectWith(context, param1, param2);
+      expect(doneFired).toEqual(1);
+      return expect(failFired).toEqual(1);
+    });
+    return it('Should filter with another observable', function() {
+      var context, deferred, doneFired, failFired, param1, param2, pipeDeferred;
+      doneFired = 0;
+      failFired = 0;
+      param1 = 'foo';
+      param2 = 'bar';
+      context = new Array();
+      deferred = new Deferred();
+      pipeDeferred = new Deferred();
+      deferred.pipe(function(string1, string2) {
+        expect(string1).toEqual(param1);
+        expect(string2).toEqual(param2);
+        return pipeDeferred.reject(string1, string2).promise();
+      }).fail(function(passed1, passed2) {
+        expect(passed1).toEqual(param1);
+        expect(passed2).toEqual(param2);
+        expect(this).toEqual(context);
+        return failFired += 1;
+      }).done(function(value) {
+        return doneFired += 1;
+      });
+      deferred.resolveWith(context, param1, param2);
+      expect(doneFired).toEqual(1);
+      expect(failFired).toEqual(0);
+      deferred = new Deferred();
+      pipeDeferred = new Deferred();
+      deferred.pipe(null, function(string1, string2) {
+        expect(string1).toEqual(param1);
+        expect(string2).toEqual(param2);
+        return pipeDeferred.resolveWith(context, param1, param2);
+      }).fail(function(value) {
+        return failFired += 1;
+      }).done(function(passed1, passed2) {
+        expect(passed1).toEqual(param1);
+        expect(passed2).toEqual(param2);
+        expect(this).toEqual(context);
+        return doneFired += 1;
+      });
+      deferred.reject(param1, param2);
+      expect(doneFired).toEqual(1);
+      return expect(failFired).toEqual(1);
+    });
+  });
+
 }).call(this);
