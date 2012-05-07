@@ -8,21 +8,28 @@ This is a standalone implementation of the wonderful jQuery.Deferred API.
 The documentation here is only for quick reference, for complete api please
 see the great work of the original project:
 
- http://api.jquery.com/category/deferred-object/
+http://api.jquery.com/category/deferred-object/
 */
 
 (function() {
-  var Promise, flatten, isObservable,
+  var Promise, flatten, isObservable, root,
     __slice = Array.prototype.slice;
 
   if (!Array.prototype.forEach) throw "Deferred requires Array.forEach";
+
+  /*
+  Store a reference to the global context
+  */
+
+  root = this;
 
   /*
   Tells if an object is observable
   */
 
   isObservable = function(obj) {
-    return typeof result === 'object' && (result.constructor.name === 'Deferred' || result.constructor.name === 'Promise');
+    console.log(obj.constructor.name);
+    return typeof obj === 'object' && (obj.constructor.name === 'Deferred' || obj.constructor.name === 'Promise');
   };
 
   /*
@@ -99,7 +106,7 @@ see the great work of the original project:
 
   })();
 
-  window.Deferred = (function() {
+  root.Deferred = (function() {
     /*
       Initializes a new Deferred. You can pass a function as a parameter 
       to be executed immediately after init. The function receives 
@@ -197,7 +204,7 @@ see the great work of the original project:
     Deferred.prototype.notify = function() {
       var args;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      this.notifyWith.apply(this, [window].concat(__slice.call(args)));
+      this.notifyWith.apply(this, [root].concat(__slice.call(args)));
       return this;
     };
 
@@ -224,7 +231,7 @@ see the great work of the original project:
       callbacks of the new promise. If the parameters passed are falsy, the promise
       object resolves or rejects normally. If the filter functions return a value,
       that one is passed to the respective callbacks. The filters can also return a
-      new Promise or Deferred object, which rejected / resolved will control how the
+      new Promise or Deferred object, of which rejected / resolved will control how the
       callbacks fire.
     */
 
@@ -310,7 +317,7 @@ see the great work of the original project:
     Deferred.prototype.reject = function() {
       var args;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      this.rejectWith.apply(this, [window].concat(__slice.call(args)));
+      this.rejectWith.apply(this, [root].concat(__slice.call(args)));
       return this;
     };
 
@@ -349,7 +356,7 @@ see the great work of the original project:
     Deferred.prototype.resolve = function() {
       var args;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      this.resolveWith.apply(this, [window].concat(__slice.call(args)));
+      this.resolveWith.apply(this, [root].concat(__slice.call(args)));
       return this;
     };
 
@@ -409,7 +416,7 @@ see the great work of the original project:
   rejected, the promise will be rejected immediately.
   */
 
-  window.Deferred.when = function() {
+  root.Deferred.when = function() {
     var allDoneArgs, allReady, args, readyCount;
     args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
     if (args.length === 0) return new Deferred().resolve().promise();

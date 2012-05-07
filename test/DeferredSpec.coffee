@@ -1,3 +1,5 @@
+root = @
+
 describe "Deferred object", ->
   it("Should initialize to state 'pending'", ->
     ready = new Deferred()
@@ -109,7 +111,7 @@ describe "Deferred object", ->
     ready.done((firstArg, secondArg) ->
       expect(firstArg).toEqual(123)
       expect(secondArg).toEqual('foo')
-      expect(@).toEqual(window)
+      expect(@).toEqual(root)
     )
     ready.resolve(123, 'foo')
   )
@@ -312,7 +314,7 @@ describe 'Deferred.pipe()', ->
       (string1, string2)->
         expect(string1).toEqual(param1)
         expect(string2).toEqual(param2)
-        pipeDeferred.reject(string1, string2).promise()
+        pipeDeferred.rejectWith(@, string1, string2).promise()
     ).fail((passed1, passed2)->
       expect(passed1).toEqual(param1)
       expect(passed2).toEqual(param2)
@@ -322,8 +324,8 @@ describe 'Deferred.pipe()', ->
       doneFired += 1
     )
     deferred.resolveWith(context, param1, param2)
-    expect(doneFired).toEqual(1)
-    expect(failFired).toEqual(0)
+    expect(doneFired).toEqual(0)
+    expect(failFired).toEqual(1)
 
     deferred = new Deferred()
     pipeDeferred = new Deferred()

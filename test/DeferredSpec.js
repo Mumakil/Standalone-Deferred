@@ -1,5 +1,8 @@
 (function() {
-  var __slice = Array.prototype.slice;
+  var root,
+    __slice = Array.prototype.slice;
+
+  root = this;
 
   describe("Deferred object", function() {
     it("Should initialize to state 'pending'", function() {
@@ -118,7 +121,7 @@
       ready.done(function(firstArg, secondArg) {
         expect(firstArg).toEqual(123);
         expect(secondArg).toEqual('foo');
-        return expect(this).toEqual(window);
+        return expect(this).toEqual(root);
       });
       return ready.resolve(123, 'foo');
     });
@@ -332,7 +335,7 @@
       deferred.pipe(function(string1, string2) {
         expect(string1).toEqual(param1);
         expect(string2).toEqual(param2);
-        return pipeDeferred.reject(string1, string2).promise();
+        return pipeDeferred.rejectWith(this, string1, string2).promise();
       }).fail(function(passed1, passed2) {
         expect(passed1).toEqual(param1);
         expect(passed2).toEqual(param2);
@@ -342,8 +345,8 @@
         return doneFired += 1;
       });
       deferred.resolveWith(context, param1, param2);
-      expect(doneFired).toEqual(1);
-      expect(failFired).toEqual(0);
+      expect(doneFired).toEqual(0);
+      expect(failFired).toEqual(1);
       deferred = new Deferred();
       pipeDeferred = new Deferred();
       deferred.pipe(null, function(string1, string2) {

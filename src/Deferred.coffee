@@ -7,17 +7,23 @@ This is a standalone implementation of the wonderful jQuery.Deferred API.
 The documentation here is only for quick reference, for complete api please
 see the great work of the original project:
 
- http://api.jquery.com/category/deferred-object/
+http://api.jquery.com/category/deferred-object/
 ###
 
 if !Array.prototype.forEach
   throw "Deferred requires Array.forEach"
 
 ###
+Store a reference to the global context
+###
+root = @
+
+###
 Tells if an object is observable
 ###
 isObservable = (obj) ->
-  typeof result == 'object' && (result.constructor.name == 'Deferred' || result.constructor.name == 'Promise')
+  console.log(obj.constructor.name)
+  typeof obj == 'object' && (obj.constructor.name == 'Deferred' || obj.constructor.name == 'Promise')
 
 ###
 Flatten a two dimensional array into one dimension.
@@ -71,7 +77,7 @@ class Promise
     @_deferred.then(done, fail)
     @
 
-class window.Deferred
+class root.Deferred
   
   ###
   Initializes a new Deferred. You can pass a function as a parameter 
@@ -148,7 +154,7 @@ class window.Deferred
   If the object has resolved or rejected, nothing will happen
   ###
   notify: (args...) ->
-    @notifyWith(window, args...)
+    @notifyWith(root, args...)
     @
   
   ###
@@ -168,7 +174,7 @@ class window.Deferred
   callbacks of the new promise. If the parameters passed are falsy, the promise
   object resolves or rejects normally. If the filter functions return a value,
   that one is passed to the respective callbacks. The filters can also return a
-  new Promise or Deferred object, which rejected / resolved will control how the
+  new Promise or Deferred object, of which rejected / resolved will control how the
   callbacks fire.
   ###
   pipe: (doneFilter, failFilter) ->
@@ -227,7 +233,7 @@ class window.Deferred
   and future fail and always callbacks.
   ###
   reject: (args...) ->
-    @rejectWith(window, args...)
+    @rejectWith(root, args...)
     @
     
   ###
@@ -253,7 +259,7 @@ class window.Deferred
   future done and always callbacks. 
   ###
   resolve: (args...) ->
-    @resolveWith(window, args...)
+    @resolveWith(root, args...)
     @
     
   ###
@@ -294,7 +300,8 @@ passed to the function resolve. The callbacks receive all the parameters that th
 individual resolves yielded as an array. If any of the deferreds or promises are 
 rejected, the promise will be rejected immediately.
 ###
-window.Deferred.when = (args...) ->
+
+root.Deferred.when = (args...) ->
   return new Deferred().resolve().promise() if args.length == 0
   return args[0].promise() if args.length == 1
   allReady = new Deferred()
