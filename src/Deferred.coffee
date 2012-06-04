@@ -94,7 +94,7 @@ class root.Deferred
   is set to the object defined by rejectWith or resolveWith if those
   variants are used.
   ###
-  always: (args...) ->
+  always: (args...) =>
     return this if args.length == 0
     functions = flatten(args)
     if @_state == 'pending'
@@ -113,7 +113,7 @@ class root.Deferred
   to resolve and this is set to the object defined by resolveWith if that
   variant is used.
   ###
-  done: (args...) ->
+  done: (args...) =>
     return this if args.length == 0
     functions = flatten(args)
     if @_state == 'resolved'
@@ -132,7 +132,7 @@ class root.Deferred
   to reject and this is set to the object defined by rejectWith if that
   variant is used.
   ###
-  fail: (args...) ->
+  fail: (args...) =>
     return this if args.length == 0
     functions = flatten(args)
     if @_state == 'rejected'
@@ -147,7 +147,7 @@ class root.Deferred
   Notify progress callbacks. The callbacks get passed the arguments given to notify.
   If the object has resolved or rejected, nothing will happen
   ###
-  notify: (args...) ->
+  notify: (args...) =>
     @notifyWith(root, args...)
     this
 
@@ -155,7 +155,7 @@ class root.Deferred
   Notify progress callbacks with additional context. Works the same way as notify(),
   except this is set to context when calling the functions.
   ###
-  notifyWith: (context, args...) ->
+  notifyWith: (context, args...) =>
     return this if @_state != 'pending'
     @_progressCallbacks?.forEach (fn) ->
       fn.apply(context, args)
@@ -170,7 +170,7 @@ class root.Deferred
   new Promise or Deferred object, of which rejected / resolved will control how the
   callbacks fire.
   ###
-  pipe: (doneFilter, failFilter) ->
+  pipe: (doneFilter, failFilter) =>
     def = new Deferred()
     @done (args...) ->
       if doneFilter?
@@ -204,7 +204,7 @@ class root.Deferred
   ###
   Add progress callbacks to be fired when using notify()
   ###
-  progress: (args...) ->
+  progress: (args...) =>
     return this if args.length == 0 or @_state != 'pending'
     functions = flatten(args)
     @_progressCallbacks or= []
@@ -214,7 +214,7 @@ class root.Deferred
   ###
   Returns the promise object of this Deferred.
   ###
-  promise: ->
+  promise: =>
     @_promise or= new Promise(this)
 
   ###
