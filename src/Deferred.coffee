@@ -304,3 +304,21 @@ root.Deferred.when = (args...) ->
       .fail (failArgs...) ->
         allReady.rejectWith(this, failArgs...)
   allReady.promise()
+
+# Install Deferred to Zepto automatically.
+do ->
+  destination = window.Zepto
+  return if not destination or destination.Deferred
+  destination.Deferred = ->
+    new Deferred()
+  origAjax = destination.ajax
+  destination.ajax = (options) ->
+    deferred = new Deferred()
+    createWrapper = (wrapped, finisher) ->
+      (args...) ->
+        wrapped?(args...)
+        finisher(args...)
+    options.success = createWrapper options.success, deferred.resolve        
+    options.error = createWrapper options.error, deferred.reject
+    origAjax(options)
+    deferred.promise()
