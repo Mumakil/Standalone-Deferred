@@ -33,11 +33,11 @@ flatten = (args) ->
   flatted = []
   args.forEach (item) ->
     if item
-      if typeof item == 'function'
+      if typeof item is 'function'
         flatted.push(item)
       else
         args.forEach (fn) ->
-          if typeof fn == 'function'
+          if typeof fn is 'function'
             flatted.push(fn)
   flatted
 
@@ -84,7 +84,7 @@ class root.Deferred
   ###
   constructor: (fn) ->
     @_state = 'pending'
-    fn.call(this, this) if typeof fn == 'function'
+    fn.call(this, this) if typeof fn is 'function'
 
   ###
   Pass in functions or arrays of functions to be executed when the
@@ -95,9 +95,9 @@ class root.Deferred
   variants are used.
   ###
   always: (args...) =>
-    return this if args.length == 0
+    return this if args.length is 0
     functions = flatten(args)
-    if @_state == 'pending'
+    if @_state is 'pending'
       @_alwaysCallbacks or= []
       @_alwaysCallbacks.push(functions...)
     else
@@ -114,12 +114,12 @@ class root.Deferred
   variant is used.
   ###
   done: (args...) =>
-    return this if args.length == 0
+    return this if args.length is 0
     functions = flatten(args)
-    if @_state == 'resolved'
+    if @_state is 'resolved'
       functions.forEach (fn) =>
         fn.apply(@_context, @_withArguments)
-    else if @_state == 'pending'
+    else if @_state is 'pending'
       @_doneCallbacks or= []
       @_doneCallbacks.push(functions...)
     this
@@ -133,12 +133,12 @@ class root.Deferred
   variant is used.
   ###
   fail: (args...) =>
-    return this if args.length == 0
+    return this if args.length is 0
     functions = flatten(args)
-    if @_state == 'rejected'
+    if @_state is 'rejected'
       functions.forEach (fn) =>
         fn.apply(@_context, @_withArguments)
-    else if @_state == 'pending'
+    else if @_state is 'pending'
       @_failCallbacks or= []
       @_failCallbacks.push(functions...)
     this
@@ -156,7 +156,7 @@ class root.Deferred
   except this is set to context when calling the functions.
   ###
   notifyWith: (context, args...) =>
-    return this if @_state != 'pending'
+    return this if @_state isnt 'pending'
     @_progressCallbacks?.forEach (fn) ->
       fn.apply(context, args)
     this
@@ -205,7 +205,7 @@ class root.Deferred
   Add progress callbacks to be fired when using notify()
   ###
   progress: (args...) =>
-    return this if args.length == 0 or @_state != 'pending'
+    return this if args.length is 0 or @_state isnt 'pending'
     functions = flatten(args)
     @_progressCallbacks or= []
     @_progressCallbacks.push(functions...)
@@ -231,7 +231,7 @@ class root.Deferred
   the first parameter is used as this when calling the fail and always callbacks.
   ###
   rejectWith: (context, args...) =>
-    return this if @_state != 'pending'
+    return this if @_state isnt 'pending'
     @_state = 'rejected'
     @_withArguments = args
     @_context = context
@@ -255,7 +255,7 @@ class root.Deferred
   the first parameter is used as this when calling the done and always callbacks.
   ###
   resolveWith: (context, args...) =>
-    return this if @_state != 'pending'
+    return this if @_state isnt 'pending'
     @_state = 'resolved'
     @_context = context
     @_withArguments = args
@@ -288,8 +288,8 @@ rejected, the promise will be rejected immediately.
 ###
 
 root.Deferred.when = (args...) ->
-  return new Deferred().resolve().promise() if args.length == 0
-  return args[0].promise() if args.length == 1
+  return new Deferred().resolve().promise() if args.length is 0
+  return args[0].promise() if args.length is 1
   allReady = new Deferred()
   readyCount = 0
   allDoneArgs = []
@@ -299,7 +299,7 @@ root.Deferred.when = (args...) ->
       .done (doneArgs...) ->
         readyCount += 1
         allDoneArgs[index] = doneArgs
-        if readyCount == args.length
+        if readyCount is args.length
           allReady.resolve(allDoneArgs...)
       .fail (failArgs...) ->
         allReady.rejectWith(this, failArgs...)
