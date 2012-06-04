@@ -10,38 +10,35 @@ see the great work of the original project:
 http://api.jquery.com/category/deferred-object/
 ###
 
-if !Array.prototype.forEach
-  throw "Deferred requires Array.forEach"
+unless Array::forEach
+  throw new Error "Deferred requires Array.forEach"
 
 ###
 Store a reference to the global context
 ###
-root = @
+root = this
 
 ###
 Tells if an object is observable
 ###
 isObservable = (obj) ->
-  console.log(obj.constructor.name)
-  typeof obj == 'object' && (obj.constructor.name == 'Deferred' || obj.constructor.name == 'Promise')
+  (obj instanceof Deferred) or (obj instanceof Promise)
 
 ###
 Flatten a two dimensional array into one dimension.
 Removes elements that are not functions
 ###
 flatten = (args) ->
-  return [] if !args
+  return [] unless args
   flatted = []
-  args.forEach((item) -> 
+  args.forEach (item) -> 
     if item
       if typeof item == 'function'
         flatted.push(item)
       else
-        args.forEach((fn) -> 
+        args.forEach (fn) -> 
           if typeof fn == 'function'
             flatted.push(fn)
-        )
-  )
   flatted
 
 
@@ -57,15 +54,15 @@ class Promise
 
   always: (args...) ->
     @_deferred.always(args...)
-    @
+    this
 
   done: (args...) ->
     @_deferred.done(args...)
-    @
+    this
 
   fail: (args...) ->
     @_deferred.fail(args...)
-    @
+    this
 
   pipe: (doneFilter, failFilter) ->
     @_deferred.pipe(doneFilter, failFilter)
@@ -75,7 +72,7 @@ class Promise
 
   then: (done, fail) ->
     @_deferred.then(done, fail)
-    @
+    this
 
 class root.Deferred
   
@@ -87,7 +84,7 @@ class root.Deferred
   ### 
   constructor: (fn) ->
     @_state = 'pending'
-    fn.call(@, @) if typeof fn == 'function'
+    fn.call(this, this) if typeof fn == 'function'
   
   ###
   Pass in functions or arrays of functions to be executed when the 
@@ -98,16 +95,15 @@ class root.Deferred
   variants are used.
   ###
   always: (args...) ->
-    return @ if args.length == 0
+    return this if args.length == 0
     functions = flatten(args)
-    if @_state != 'pending'
-      functions.forEach((fn) =>
-        fn.apply(@_context, @_withArguments)
-      )
-    else 
-      @_alwaysCallbacks ||= []
+    if @_state == 'pending'
+      @_alwaysCallbacks or= []
       @_alwaysCallbacks.push(functions...)
-    @
+    else
+      functions.forEach (fn) =>
+        fn.apply(@_context, @_withArguments)
+    this
   
   ###
   Pass in functions or arrays of functions to be executed when the 
@@ -118,16 +114,15 @@ class root.Deferred
   variant is used.
   ###
   done: (args...) ->
-    return @ if args.length == 0
+    return this if args.length == 0
     functions = flatten(args)
     if @_state == 'resolved'
-      functions.forEach((fn) =>
+      functions.forEach (fn) =>
         fn.apply(@_context, @_withArguments)
-      )
     else if @_state == 'pending'
-      @_doneCallbacks ||= []
+      @_doneCallbacks or= []
       @_doneCallbacks.push(functions...)
-    @
+    this
   
   ###
   Pass in functions or arrays of functions to be executed when the 
@@ -138,16 +133,15 @@ class root.Deferred
   variant is used.
   ###
   fail: (args...) ->
-    return @ if args.length == 0
+    return this if args.length == 0
     functions = flatten(args)
     if @_state == 'rejected'
-      functions.forEach((fn) =>
+      functions.forEach (fn) =>
         fn.apply(@_context, @_withArguments)
-      )
     else if @_state == 'pending'
-      @_failCallbacks ||= []
+      @_failCallbacks or= []
       @_failCallbacks.push(functions...)
-    @
+    this
   
   ###
   Notify progress callbacks. The callbacks get passed the arguments given to notify.
@@ -155,18 +149,17 @@ class root.Deferred
   ###
   notify: (args...) ->
     @notifyWith(root, args...)
-    @
+    this
   
   ###
   Notify progress callbacks with additional context. Works the same way as notify(),
   except this is set to context when calling the functions.
   ###
   notifyWith: (context, args...) ->
-    return @ if @_state != 'pending'
-    @_progressCallbacks?.forEach((fn) ->
+    return this if @_state != 'pending'
+    @_progressCallbacks?.forEach (fn) ->
       fn.apply(context, args)
-    )
-    @  
+    this  
   
   ###
   Returns a new Promise object that's tied to the current Deferred. The doneFilter
@@ -179,106 +172,99 @@ class root.Deferred
   ###
   pipe: (doneFilter, failFilter) ->
     def = new Deferred()
-    @done((args...) ->
-      if typeof doneFilter == 'undefined' || doneFilter == null
-        def.resolveWith.call(def, @, args...)
-      else
-        result = doneFilter.apply(@, args)
+    @done (args...) ->
+      if doneFilter?
+        result = doneFilter.apply(this, args)
         if isObservable(result)
-          result.done((doneArgs...)->
-            def.resolveWith.call(def, @, doneArgs...)
-          ).fail((failArgs...) ->
-            def.rejectWith.call(def, @, failArgs...)
-          )
+          result
+            .done (doneArgs...)->
+              def.resolveWith.call(def, this, doneArgs...)
+            .fail (failArgs...) ->
+              def.rejectWith.call(def, this, failArgs...)
         else
-          def.resolveWith.call(def, @, result)
-    )
-    @fail((args...) ->
-      if typeof failFilter == 'undefined' || failFilter == null
-        def.rejectWith.call(def, @, args...) 
+          def.resolveWith.call(def, this, result)
       else
-        result = failFilter.apply(@, args)
+        def.resolveWith.call(def, this, args...)
+    @fail (args...) ->
+      if failFilter?
+        result = failFilter.apply(this, args)
         if isObservable(result)
-          result.done((doneArgs...)->
-            def.resolveWith.call(def, @, doneArgs...)
-          ).fail((failArgs...) ->
-            def.rejectWith.call(def, @, failArgs...)
-          )
+          result
+            .done (doneArgs...)->
+              def.resolveWith.call(def, this, doneArgs...)
+            .fail (failArgs...) ->
+              def.rejectWith.call(def, this, failArgs...)
         else
-          def.rejectWith.call(def, @, result)
-    )
+          def.rejectWith.call(def, this, result)
+        def.rejectWith.call(def, this, args...) 
+      else
+        def.rejectWith.call(def, this, args...) 
     def.promise()
 
   ###
   Add progress callbacks to be fired when using notify()
   ###
   progress: (args...) ->
-    return @ if args.length == 0 || @_state != 'pending'
+    return this if args.length == 0 or @_state != 'pending'
     functions = flatten(args)
-    @_progressCallbacks ||= []
+    @_progressCallbacks or= []
     @_progressCallbacks.push(functions...)
-    @
+    this
   
   ###
   Returns the promise object of this Deferred.
   ###
   promise: ->
-    unless @_promise
-      @_promise = new Promise(@)
-    @_promise
+    @_promise or= new Promise(this)
   
   ###
   Reject this Deferred. If the object has already been rejected or resolved,
   nothing happens. Parameters passed to reject will be handed to all current
   and future fail and always callbacks.
   ###
-  reject: (args...) ->
+  reject: (args...) =>
     @rejectWith(root, args...)
-    @
+    this
     
   ###
   Reject this Deferred with additional context. Works the same way as reject, except
   the first parameter is used as this when calling the fail and always callbacks.
   ###
-  rejectWith: (context, args...)->
-    return @ if @_state != 'pending'
+  rejectWith: (context, args...) =>
+    return this if @_state != 'pending'
     @_state = 'rejected'
     @_withArguments = args
     @_context = context
-    @_failCallbacks?.forEach((fn) =>
+    @_failCallbacks?.forEach (fn) =>
       fn.apply(@_context, args)
-    )
-    @_alwaysCallbacks?.forEach((fn) =>
+    @_alwaysCallbacks?.forEach (fn) =>
       fn.apply(@_context, args)
-    )
-    @
+    this
     
   ###
   Resolves this Deferred object. If the object has already been rejected or resolved,
   nothing happens. Parameters passed to resolve will be handed to all current and
   future done and always callbacks. 
   ###
-  resolve: (args...) ->
+  resolve: (args...) =>
     @resolveWith(root, args...)
-    @
+    this
     
   ###
   Resolve this Deferred with additional context. Works the same way as resolve, except
   the first parameter is used as this when calling the done and always callbacks.
   ###
-  resolveWith: (context, args...) ->
-    return @ if @_state != 'pending'
+  resolveWith: (context, args...) =>
+    return this if @_state != 'pending'
     @_state = 'resolved'
     @_context = context
     @_withArguments = args
-    @_doneCallbacks?.forEach((fn) =>
+    @_doneCallbacks?.forEach (fn) =>
       fn.apply(@_context, args)
-    )
-    @_alwaysCallbacks?.forEach((fn) =>
+    @_alwaysCallbacks?.forEach (fn) =>
       fn.apply(@_context, args)
-    )
-    @
-    
+    this
+
   ###
   Returns the state of this Deferred. Can be 'pending', 'rejected' or 'resolved'.
   ###
@@ -288,11 +274,11 @@ class root.Deferred
   ###
   Convenience function to specify each done, fail and progress callbacks at the same time.
   ###
-  then: (doneCallbacks, failCallbacks, progressCallbacks) -> 
+  then: (doneCallbacks, failCallbacks, progressCallbacks) =>
     @done(doneCallbacks)
     @fail(failCallbacks)
     @progress(progressCallbacks)
-    @
+    this
 
 ###
 Returns a new promise object which will resolve when all of the deferreds or promises
@@ -308,14 +294,13 @@ root.Deferred.when = (args...) ->
   readyCount = 0
   allDoneArgs = []
   
-  args.forEach((dfr, index) ->
-    dfr.done((doneArgs...) ->
-      readyCount += 1 
-      allDoneArgs[index] = doneArgs
-      if readyCount == args.length
-        allReady.resolve(allDoneArgs...)
-    ).fail((failArgs...) ->
-      allReady.rejectWith(@, failArgs...)
-    )
-  )
+  args.forEach (dfr, index) ->
+    dfr
+      .done (doneArgs...) ->
+        readyCount += 1 
+        allDoneArgs[index] = doneArgs
+        if readyCount == args.length
+          allReady.resolve(allDoneArgs...)
+      .fail (failArgs...) ->
+        allReady.rejectWith(this, failArgs...)
   allReady.promise()
