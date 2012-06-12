@@ -1,10 +1,10 @@
 
-/* 
+/*
 Standalone Deferred
-Copyright 2012 Otto Vehviläinen 
+Copyright 2012 Otto Vehviläinen
 Released under MIT license
 
-This is a standalone implementation of the wonderful jQuery.Deferred API. 
+This is a standalone implementation of the wonderful jQuery.Deferred API.
 The documentation here is only for quick reference, for complete api please
 see the great work of the original project:
 
@@ -13,9 +13,10 @@ http://api.jquery.com/category/deferred-object/
 
 (function() {
   var Promise, flatten, isObservable, root,
-    __slice = Array.prototype.slice;
+    __slice = Array.prototype.slice,
+    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
-  if (!Array.prototype.forEach) throw "Deferred requires Array.forEach";
+  if (!Array.prototype.forEach) throw new Error("Deferred requires Array.forEach");
 
   /*
   Store a reference to the global context
@@ -28,8 +29,7 @@ http://api.jquery.com/category/deferred-object/
   */
 
   isObservable = function(obj) {
-    console.log(obj.constructor.name);
-    return typeof obj === 'object' && (obj.constructor.name === 'Deferred' || obj.constructor.name === 'Promise');
+    return (obj instanceof Deferred) || (obj instanceof Promise);
   };
 
   /*
@@ -56,7 +56,7 @@ http://api.jquery.com/category/deferred-object/
   };
 
   /*
-  Promise object functions as a proxy for a Deferred, except 
+  Promise object functions as a proxy for a Deferred, except
   it does not let you modify the state of the Deferred
   */
 
@@ -108,18 +108,30 @@ http://api.jquery.com/category/deferred-object/
 
   root.Deferred = (function() {
     /*
-      Initializes a new Deferred. You can pass a function as a parameter 
-      to be executed immediately after init. The function receives 
+      Initializes a new Deferred. You can pass a function as a parameter
+      to be executed immediately after init. The function receives
       the new deferred object as a parameter and this is also set to the
       same object.
     */
     function Deferred(fn) {
-      this._state = 'pending';
+      this.then = __bind(this.then, this);
+      this.resolveWith = __bind(this.resolveWith, this);
+      this.resolve = __bind(this.resolve, this);
+      this.rejectWith = __bind(this.rejectWith, this);
+      this.reject = __bind(this.reject, this);
+      this.promise = __bind(this.promise, this);
+      this.progress = __bind(this.progress, this);
+      this.pipe = __bind(this.pipe, this);
+      this.notifyWith = __bind(this.notifyWith, this);
+      this.notify = __bind(this.notify, this);
+      this.fail = __bind(this.fail, this);
+      this.done = __bind(this.done, this);
+      this.always = __bind(this.always, this);      this._state = 'pending';
       if (typeof fn === 'function') fn.call(this, this);
     }
 
     /*
-      Pass in functions or arrays of functions to be executed when the 
+      Pass in functions or arrays of functions to be executed when the
       Deferred object changes state from pending. If the state is already
       rejected or resolved, the functions are executed immediately. They
       receive the arguments that are passed to reject or resolve and this
@@ -133,22 +145,22 @@ http://api.jquery.com/category/deferred-object/
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
       if (args.length === 0) return this;
       functions = flatten(args);
-      if (this._state !== 'pending') {
+      if (this._state === 'pending') {
+        this._alwaysCallbacks || (this._alwaysCallbacks = []);
+        (_ref = this._alwaysCallbacks).push.apply(_ref, functions);
+      } else {
         functions.forEach(function(fn) {
           return fn.apply(_this._context, _this._withArguments);
         });
-      } else {
-        this._alwaysCallbacks || (this._alwaysCallbacks = []);
-        (_ref = this._alwaysCallbacks).push.apply(_ref, functions);
       }
       return this;
     };
 
     /*
-      Pass in functions or arrays of functions to be executed when the 
-      Deferred object is resolved. If the object has already been resolved, 
+      Pass in functions or arrays of functions to be executed when the
+      Deferred object is resolved. If the object has already been resolved,
       the functions are executed immediately. If the object has been rejected,
-      nothing happens. The functions receive the arguments that are passed 
+      nothing happens. The functions receive the arguments that are passed
       to resolve and this is set to the object defined by resolveWith if that
       variant is used.
     */
@@ -171,10 +183,10 @@ http://api.jquery.com/category/deferred-object/
     };
 
     /*
-      Pass in functions or arrays of functions to be executed when the 
-      Deferred object is rejected. If the object has already been rejected, 
+      Pass in functions or arrays of functions to be executed when the
+      Deferred object is rejected. If the object has already been rejected,
       the functions are executed immediately. If the object has been resolved,
-      nothing happens. The functions receive the arguments that are passed 
+      nothing happens. The functions receive the arguments that are passed
       to reject and this is set to the object defined by rejectWith if that
       variant is used.
     */
@@ -227,7 +239,7 @@ http://api.jquery.com/category/deferred-object/
 
     /*
       Returns a new Promise object that's tied to the current Deferred. The doneFilter
-      and failFilter can be used to modify the final values that are passed to the 
+      and failFilter can be used to modify the final values that are passed to the
       callbacks of the new promise. If the parameters passed are falsy, the promise
       object resolves or rejects normally. If the filter functions return a value,
       that one is passed to the respective callbacks. The filters can also return a
@@ -241,45 +253,46 @@ http://api.jquery.com/category/deferred-object/
       this.done(function() {
         var args, result, _ref;
         args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-        if (typeof doneFilter === 'undefined' || doneFilter === null) {
-          return (_ref = def.resolveWith).call.apply(_ref, [def, this].concat(__slice.call(args)));
-        } else {
+        if (doneFilter != null) {
           result = doneFilter.apply(this, args);
           if (isObservable(result)) {
             return result.done(function() {
-              var doneArgs, _ref2;
+              var doneArgs, _ref;
               doneArgs = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-              return (_ref2 = def.resolveWith).call.apply(_ref2, [def, this].concat(__slice.call(doneArgs)));
+              return (_ref = def.resolveWith).call.apply(_ref, [def, this].concat(__slice.call(doneArgs)));
             }).fail(function() {
-              var failArgs, _ref2;
+              var failArgs, _ref;
               failArgs = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-              return (_ref2 = def.rejectWith).call.apply(_ref2, [def, this].concat(__slice.call(failArgs)));
+              return (_ref = def.rejectWith).call.apply(_ref, [def, this].concat(__slice.call(failArgs)));
             });
           } else {
             return def.resolveWith.call(def, this, result);
           }
+        } else {
+          return (_ref = def.resolveWith).call.apply(_ref, [def, this].concat(__slice.call(args)));
         }
       });
       this.fail(function() {
-        var args, result, _ref;
+        var args, result, _ref, _ref2;
         args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-        if (typeof failFilter === 'undefined' || failFilter === null) {
-          return (_ref = def.rejectWith).call.apply(_ref, [def, this].concat(__slice.call(args)));
-        } else {
+        if (failFilter != null) {
           result = failFilter.apply(this, args);
           if (isObservable(result)) {
-            return result.done(function() {
-              var doneArgs, _ref2;
+            result.done(function() {
+              var doneArgs, _ref;
               doneArgs = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-              return (_ref2 = def.resolveWith).call.apply(_ref2, [def, this].concat(__slice.call(doneArgs)));
+              return (_ref = def.resolveWith).call.apply(_ref, [def, this].concat(__slice.call(doneArgs)));
             }).fail(function() {
-              var failArgs, _ref2;
+              var failArgs, _ref;
               failArgs = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-              return (_ref2 = def.rejectWith).call.apply(_ref2, [def, this].concat(__slice.call(failArgs)));
+              return (_ref = def.rejectWith).call.apply(_ref, [def, this].concat(__slice.call(failArgs)));
             });
           } else {
-            return def.rejectWith.call(def, this, result);
+            def.rejectWith.call(def, this, result);
           }
+          return (_ref = def.rejectWith).call.apply(_ref, [def, this].concat(__slice.call(args)));
+        } else {
+          return (_ref2 = def.rejectWith).call.apply(_ref2, [def, this].concat(__slice.call(args)));
         }
       });
       return def.promise();
@@ -304,8 +317,7 @@ http://api.jquery.com/category/deferred-object/
     */
 
     Deferred.prototype.promise = function() {
-      if (!this._promise) this._promise = new Promise(this);
-      return this._promise;
+      return this._promise || (this._promise = new Promise(this));
     };
 
     /*
@@ -411,8 +423,8 @@ http://api.jquery.com/category/deferred-object/
 
   /*
   Returns a new promise object which will resolve when all of the deferreds or promises
-  passed to the function resolve. The callbacks receive all the parameters that the 
-  individual resolves yielded as an array. If any of the deferreds or promises are 
+  passed to the function resolve. The callbacks receive all the parameters that the
+  individual resolves yielded as an array. If any of the deferreds or promises are
   rejected, the promise will be rejected immediately.
   */
 
@@ -441,5 +453,31 @@ http://api.jquery.com/category/deferred-object/
     });
     return allReady.promise();
   };
+
+  (function() {
+    var destination, origAjax;
+    destination = window.Zepto;
+    if (!destination || destination.Deferred) return;
+    destination.Deferred = function() {
+      return new Deferred();
+    };
+    origAjax = destination.ajax;
+    return destination.ajax = function(options) {
+      var createWrapper, deferred;
+      deferred = new Deferred();
+      createWrapper = function(wrapped, finisher) {
+        return function() {
+          var args;
+          args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+          if (typeof wrapped === "function") wrapped.apply(null, args);
+          return finisher.apply(null, args);
+        };
+      };
+      options.success = createWrapper(options.success, deferred.resolve);
+      options.error = createWrapper(options.error, deferred.reject);
+      origAjax(options);
+      return deferred.promise();
+    };
+  })();
 
 }).call(this);
